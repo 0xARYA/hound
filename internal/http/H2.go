@@ -2,6 +2,7 @@ package houndHTTP
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -13,6 +14,12 @@ import (
 
 	houndHTTP2 "github.com/0xARYA/hound/pkg/HTTP2"
 )
+
+type HTTP2FingerprintResponse struct {
+	TLSFingerprint   string `json:"TLS"`
+	HTTP2Fingerprint string `json:"HTTP2"`
+	IP               string `json:"IP"`
+}
 
 func parseHTTP2(framer *http2.Framer, frameParseChannel chan houndHTTP2.ParsedFrame) {
 	for {
@@ -58,7 +65,8 @@ func parseHTTP2(framer *http2.Framer, frameParseChannel chan houndHTTP2.ParsedFr
 			headers, decodeError := decoder.DecodeFull(frame.HeaderBlockFragment())
 
 			if decodeError != nil {
-				log.Println("Error decoding headers: ", decodeError)
+				log.Println("Error Decoding Headers: ", decodeError)
+
 				return
 			}
 
@@ -93,18 +101,17 @@ func parseHTTP2(framer *http2.Framer, frameParseChannel chan houndHTTP2.ParsedFr
 func handleHTTP2(connection net.Conn, TLSFingerprint string) {
 	framer := http2.NewFramer(connection, connection)
 
-	frameParseChannel := make(chan houndHTTP2.ParsedFrame)
-
-	go parseHTTP2(framer, frameParseChannel)
-
 	framer.WriteSettings(
 		http2.Setting{ID: http2.SettingInitialWindowSize, Val: 1048576},
 		http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100},
 		http2.Setting{ID: http2.SettingMaxHeaderListSize, Val: 65536},
 	)
 
-	var parsedFrames []houndHTTP2.ParsedFrame
+	frameParseChannel := make(chan houndHTTP2.ParsedFrame)
 
+	go parseHTTP2(framer, frameParseChannel)
+
+	var parsedFrames []houndHTTP2.ParsedFrame
 	var parsedFrame houndHTTP2.ParsedFrame
 
 	for {
@@ -119,15 +126,21 @@ func handleHTTP2(connection net.Conn, TLSFingerprint string) {
 
 	HTTP2Fingerprint := houndHTTP2.Fingerprint(parsedFrames)
 
-	response := fmt.Sprintf("TLS: %s\r\nHTTP/2: %s\r\nIP: %s\r\n", TLSFingerprint, HTTP2Fingerprint, connection.RemoteAddr().String())
+	responseBody, _ := json.Marshal(HTTP2FingerprintResponse{
+		TLSFingerprint:   TLSFingerprint,
+		HTTP2Fingerprint: HTTP2Fingerprint,
+		IP:               connection.RemoteAddr().String(),
+	})
+
+	responseContentLength := strconv.Itoa(len(responseBody))
 
 	headerBuffer := bytes.NewBuffer([]byte{})
 	headerEncoder := hpack.NewEncoder(headerBuffer)
 
 	headerEncoder.WriteField(hpack.HeaderField{Name: ":status", Value: "200"})
 	headerEncoder.WriteField(hpack.HeaderField{Name: "server", Value: "github.com/0xARYA/hound"})
-	headerEncoder.WriteField(hpack.HeaderField{Name: "content-length", Value: strconv.Itoa(len(response))})
-	headerEncoder.WriteField(hpack.HeaderField{Name: "content-type", Value: "text/plain"})
+	headerEncoder.WriteField(hpack.HeaderField{Name: "content-length", Value: responseContentLength})
+	headerEncoder.WriteField(hpack.HeaderField{Name: "content-type", Value: "application/json"})
 
 	writeHeadersError := framer.WriteHeaders(http2.HeadersFrameParam{
 		StreamID:      parsedFrame.StreamID,
@@ -136,10 +149,10 @@ func handleHTTP2(connection net.Conn, TLSFingerprint string) {
 	})
 
 	if writeHeadersError != nil {
-		log.Println("Failed To Write Headers : ", writeHeadersError)
+		log.Println("Failed To Write Headers: ", writeHeadersError)
 
 		return
 	}
 
-	framer.WriteData(parsedFrame.StreamID, true, []byte(response))
+	framer.WriteData(parsedFrame.StreamID, true, responseBody)
 }
