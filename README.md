@@ -12,9 +12,9 @@
 ## 👀 Methodology
 
 ### Server
-- [ ] **IP Address**
+- [x] **IP Address**
 - [x] **TLS** *- Handshake "Client Hello"*
-- [ ] **HTTP/2** *- Frames*
+- [x] **HTTP/2** *- Frames*
 - [ ] **HTTP Headers** *- User Agent, Accept, Accept-Encoding*
 
 ### Client
