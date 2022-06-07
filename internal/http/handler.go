@@ -7,7 +7,7 @@ import (
 	"net"
 
 	houndNet "github.com/0xARYA/hound/internal/net"
-	houndTLS "github.com/0xARYA/hound/pkg/tls"
+	houndTLS "github.com/0xARYA/hound/pkg/fingerprinters/tls"
 )
 
 var HTTP2PrefaceBytes = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
