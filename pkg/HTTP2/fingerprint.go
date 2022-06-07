@@ -40,14 +40,14 @@ func getSettingsFingerprint(frames []ParsedFrame) string {
 					return "ERROR"
 				}
 
-				settingsFingerprint += mapping[settingParts[0]] + ":" + settingParts[1] + ","
+				settingsFingerprint += mapping[settingParts[0]] + ":" + settingParts[1] + "-"
 			}
 
 			break
 		}
 	}
 
-	return strings.TrimRight(settingsFingerprint, ",")
+	return strings.TrimRight(settingsFingerprint, "-")
 }
 
 func getWindowUpdateFingerprint(frames []ParsedFrame) string {
@@ -67,12 +67,12 @@ func getPriorityFingerprint(frames []ParsedFrame) string {
 		if parsedFrame.Type == "PRIORITY" {
 			priorityFingerprint += fmt.Sprintf("%v:%v:%v:%v", parsedFrame.StreamID, parsedFrame.Exclusive, parsedFrame.DependsOn, parsedFrame.Weight)
 
-			priorityFingerprint += ","
+			priorityFingerprint += "-"
 		}
 	}
 
 	if priorityFingerprint != "" {
-		return strings.TrimRight(priorityFingerprint, ",")
+		return strings.TrimRight(priorityFingerprint, "-")
 	}
 
 	return "0"
@@ -88,7 +88,7 @@ func getHeaderOrderFingerprint(parsedFrames []ParsedFrame) string {
 					headerOrderFingerprint += string(header[1])
 
 					if headerIndex < 3 {
-						headerOrderFingerprint += ","
+						headerOrderFingerprint += "-"
 					}
 				}
 			}
@@ -103,9 +103,9 @@ func getHeaderOrderFingerprint(parsedFrames []ParsedFrame) string {
 func Fingerprint(parsedFrames []ParsedFrame) string {
 	var fingerprint string
 
-	fingerprint += getSettingsFingerprint(parsedFrames) + "|"
-	fingerprint += getWindowUpdateFingerprint(parsedFrames) + "|"
-	fingerprint += getPriorityFingerprint(parsedFrames) + "|"
+	fingerprint += getSettingsFingerprint(parsedFrames) + ","
+	fingerprint += getWindowUpdateFingerprint(parsedFrames) + ","
+	fingerprint += getPriorityFingerprint(parsedFrames) + ","
 	fingerprint += getHeaderOrderFingerprint(parsedFrames)
 
 	return fingerprint
