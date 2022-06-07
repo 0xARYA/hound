@@ -1,4 +1,4 @@
-package TLS
+package houndTLS
 
 import (
 	"embed"

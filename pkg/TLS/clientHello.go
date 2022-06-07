@@ -1,4 +1,4 @@
-package TLS
+package houndTLS
 
 import (
 	"golang.org/x/crypto/cryptobyte"
@@ -133,8 +133,10 @@ func UnmarshalClientHello(handshake []byte) *ClientHello {
 		switch extensionType {
 		case 0:
 			clientHello.Extra.ServerName = &parsedExtensionData.(*ServerNameData).HostName
+
 		case 16:
 			clientHello.Extra.Protocols = parsedExtensionData.(*ALPNData).Protocols
+
 		case 18:
 			clientHello.Extra.ProvidedSCTs = true
 		}

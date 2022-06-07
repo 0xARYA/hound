@@ -1,4 +1,4 @@
-package TLS
+package houndTLS
 
 import (
 	"fmt"
@@ -44,7 +44,9 @@ func Fingerprint(clientHello *ClientHello) string {
 					supportedGroups += strconv.FormatUint(uint64(supportedGroup), 10)
 				}
 			}
-		} else if extension.Type == 11 {
+		}
+
+		if extension.Type == 11 {
 			pointFormatsData := extension.Data.(*ECPointFormatsData)
 
 			for _, pointFormat := range pointFormatsData.Formats {

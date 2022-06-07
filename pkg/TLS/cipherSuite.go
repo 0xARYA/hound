@@ -1,4 +1,4 @@
-package TLS
+package houndTLS
 
 type CipherSuite struct {
 	Code   [2]uint8 `json:"code"`
