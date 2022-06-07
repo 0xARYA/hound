@@ -2,7 +2,7 @@ package houndHTTP
 
 import (
 	"bufio"
-	"crypto/tls"
+	"bytes/tls"
 	"log"
 	"net"
 
@@ -10,7 +10,9 @@ import (
 	houndTLS "github.com/0xARYA/hound/pkg/TLS"
 )
 
-var prefaceByteLength = len([]byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"))
+var HTTP2PrefaceBytes = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+
+var HTTP2PrefaceByteLength = len(HTTP2PrefaceBytes)
 
 func getConnectionClientHello(connection net.Conn) *houndTLS.ClientHello {
 	TLSConnection, OK := connection.(*tls.Conn)
@@ -44,7 +46,7 @@ func HandleConnection(connection net.Conn) {
 
 	connectionReader := bufio.NewReader(connection)
 
-	preface, connectionPeekError := connectionReader.Peek(prefaceByteLength)
+	preface, connectionPeekError := connectionReader.Peek(HTTP2PrefaceByteLength)
 
 	if connectionPeekError != nil {
 		log.Println(connectionPeekError)
@@ -52,7 +54,9 @@ func HandleConnection(connection net.Conn) {
 		return
 	}
 
-	if string(preface) == "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" {
+	
+
+	if bytes.Equal(preface, HTTP2PrefaceBytes) {
 		handleHTTP2(connection, connectionTLSFingerprint)
 	}
 }
