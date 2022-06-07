@@ -15,7 +15,7 @@
 - [x] **IP Address**
 - [x] **TLS** *- Handshake "Client Hello"*
 - [x] **HTTP/2** *- Frames*
-- [ ] **HTTP Headers** *- User Agent, Accept, Accept-Encoding*
+- [ ] **HTTP Headers** *- User Agent, Accept, Accept-Encoding, Accept-Language*
 
 ### Client
 - [ ] **JavaScript**
