@@ -1,4 +1,4 @@
-package net
+package houndNet
 
 import (
 	"io"
@@ -11,10 +11,10 @@ type HandshakeReader struct {
 
 func (reader *HandshakeReader) Read(p []byte) (int, error) {
 	for reader.bytesRemaining == 0 {
-		header, err := readRecordHeader(reader.reader)
+		header, readRecordHeaderError := readRecordHeader(reader.reader)
 
-		if err != nil {
-			return 0, err
+		if readRecordHeaderError != nil {
+			return 0, readRecordHeaderError
 		}
 
 		if header.contentType == 22 {
@@ -32,11 +32,11 @@ func (reader *HandshakeReader) Read(p []byte) (int, error) {
 		p = p[:reader.bytesRemaining]
 	}
 
-	bytesRead, err := reader.reader.Read(p)
+	bytesRead, readError := reader.reader.Read(p)
 
 	reader.bytesRemaining -= bytesRead
 
-	return bytesRead, err
+	return bytesRead, readError
 }
 
 func (reader *HandshakeReader) ReadMessage() ([]byte, error) {
