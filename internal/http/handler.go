@@ -7,7 +7,7 @@ import (
 	"net"
 
 	houndNet "github.com/0xARYA/hound/internal/net"
-	houndTLS "github.com/0xARYA/hound/pkg/TLS"
+	houndTLS "github.com/0xARYA/hound/pkg/tls"
 )
 
 var HTTP2PrefaceBytes = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
@@ -56,5 +56,7 @@ func HandleConnection(connection net.Conn) {
 
 	if bytes.Equal(connectionPreface, HTTP2PrefaceBytes) {
 		handleHTTP2(connection, connectionTLSFingerprint)
+	} else {
+		// TODO: Handle HTTP/1
 	}
 }

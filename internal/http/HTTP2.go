@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 
-	houndHTTP2 "github.com/0xARYA/hound/pkg/HTTP2"
+	houndHTTP2 "github.com/0xARYA/hound/pkg/http2"
 )
 
 type HTTP2FingerprintResponse struct {

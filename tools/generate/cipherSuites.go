@@ -23,7 +23,7 @@ type StaticCipherSuite struct {
 
 const sourceURL = `https://www.iana.org/assignments/tls-parameters/tls-parameters-4.csv`
 
-const outputFilePath = "pkg/TLS/static/cipherSuites.json"
+const outputFilePath = "pkg/tls/static/cipherSuites.json"
 
 func main() {
 	client := &http.Client{Timeout: 1 * time.Minute}

@@ -26,7 +26,7 @@ type StaticExtension struct {
 
 const sourceURL = `https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values-1.csv`
 
-const outputFilePath = "pkg/TLS/static/extensions.json"
+const outputFilePath = "pkg/tls/static/extensions.json"
 
 func main() {
 	client := &http.Client{Timeout: 1 * time.Minute}
