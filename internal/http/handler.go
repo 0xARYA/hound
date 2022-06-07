@@ -2,7 +2,8 @@ package houndHTTP
 
 import (
 	"bufio"
-	"bytes/tls"
+	"bytes"
+	"crypto/tls"
 	"log"
 	"net"
 
@@ -46,7 +47,7 @@ func HandleConnection(connection net.Conn) {
 
 	connectionReader := bufio.NewReader(connection)
 
-	preface, connectionPeekError := connectionReader.Peek(HTTP2PrefaceByteLength)
+	connectionPreface, connectionPeekError := connectionReader.Peek(HTTP2PrefaceByteLength)
 
 	if connectionPeekError != nil {
 		log.Println(connectionPeekError)
@@ -54,9 +55,7 @@ func HandleConnection(connection net.Conn) {
 		return
 	}
 
-	
-
-	if bytes.Equal(preface, HTTP2PrefaceBytes) {
+	if bytes.Equal(connectionPreface, HTTP2PrefaceBytes) {
 		handleHTTP2(connection, connectionTLSFingerprint)
 	}
 }
