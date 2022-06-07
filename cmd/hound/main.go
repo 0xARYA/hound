@@ -4,28 +4,14 @@ import (
 	"crypto/tls"
 	"flag"
 	"log"
-	"net/http"
-	"time"
 
-	"github.com/gorilla/mux"
 	"golang.org/x/crypto/acme"
 	"src.agwa.name/go-listener"
 	"src.agwa.name/go-listener/cert"
 
-	net "github.com/0xARYA/hound/internal/net"
-	TLS "github.com/0xARYA/hound/pkg/TLS"
+	houndHTTP "github.com/0xARYA/hound/internal/http"
+	houndNet "github.com/0xARYA/hound/internal/net"
 )
-
-// temporary, i promise.
-func handler(w http.ResponseWriter, req *http.Request) {
-	rawClientHello := req.Context().Value(net.HandshakeKey).([]byte)
-
-	clientHello := TLS.UnmarshalClientHello(rawClientHello)
-
-	TLSFingerprint := TLS.Fingerprint(clientHello)
-
-	w.Write([]byte(TLSFingerprint))
-}
 
 func main() {
 	certificatePath := flag.String("certificatePath", "certificates/localhost.pem", "Server Certificate Path")
@@ -34,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	if *certificatePath == "" {
-		log.Fatal("No certificate path provided")
+		log.Fatal("No Certificate Path Specified.")
 	}
 
 	TLSConfiguration := tls.Config{
@@ -43,29 +29,29 @@ func main() {
 		GetCertificate:         cert.GetCertificateFromFile(*certificatePath),
 	}
 
-	// again. temporary, i promise - still need to implement other fingerprinting methods.
-	router := mux.NewRouter()
-	router.HandleFunc("/", handler)
+	streamListener, listenerOpenError := listener.Open(*listenerInterface)
 
-	httpServer := &http.Server{
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  5 * time.Second,
-		Handler:      router,
-		ConnContext:  net.HandshakeConnectionContext,
+	if listenerOpenError != nil {
+		log.Fatal(listenerOpenError)
 	}
 
-	streamListener, streamListenerError := listener.Open(*listenerInterface)
-
-	if streamListenerError != nil {
-		log.Fatal(streamListenerError)
-	}
-
-	defer streamListener.Close()
-
-	handshakeListener := net.NewHandshakeListener(streamListener)
+	handshakeListener := houndNet.NewHandshakeListener(streamListener)
 
 	TLSListener := tls.NewListener(handshakeListener, &TLSConfiguration)
 
-	log.Fatal(httpServer.Serve(TLSListener))
+	defer TLSListener.Close()
+
+	log.Println("Server Running On: ", TLSListener.Addr().String())
+
+	for {
+		connection, connectionError := TLSListener.Accept()
+
+		if connectionError != nil {
+			log.Println("Failed To Accept Connection: ", connectionError)
+
+			continue
+		}
+
+		go houndHTTP.HandleConnection(connection)
+	}
 }
