@@ -2,6 +2,7 @@ package houndHTTP2
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -19,17 +20,17 @@ type ParsedFrame struct {
 	Exclusive int      `json:"exclusive,omitempty"`
 }
 
-func getSettingsFingerprint(frames []ParsedFrame) string {
-	var settingsFingerprint string
+var settingsTypeMapping = map[string]string{
+	"HEADER_TABLE_SIZE":      "1",
+	"ENABLE_PUSH":            "2",
+	"MAX_CONCURRENT_STREAMS": "3",
+	"INITIAL_WINDOW_SIZE":    "4",
+	"MAX_FRAME_SIZE":         "5",
+	"MAX_HEADER_LIST_SIZE":   "6",
+}
 
-	mapping := map[string]string{
-		"HEADER_TABLE_SIZE":      "1",
-		"ENABLE_PUSH":            "2",
-		"MAX_CONCURRENT_STREAMS": "3",
-		"INITIAL_WINDOW_SIZE":    "4",
-		"MAX_FRAME_SIZE":         "5",
-		"MAX_HEADER_LIST_SIZE":   "6",
-	}
+func parseSettingsFrames(frames []ParsedFrame) string {
+	var settingsFingerprint string
 
 	for _, parsedFrame := range frames {
 		if parsedFrame.Type == "SETTINGS" {
@@ -40,7 +41,7 @@ func getSettingsFingerprint(frames []ParsedFrame) string {
 					return "ERROR"
 				}
 
-				settingsFingerprint += mapping[settingParts[0]] + ":" + settingParts[1] + "-"
+				settingsFingerprint += settingsTypeMapping[settingParts[0]] + ":" + settingParts[1] + "-"
 			}
 
 			break
@@ -50,7 +51,7 @@ func getSettingsFingerprint(frames []ParsedFrame) string {
 	return strings.TrimRight(settingsFingerprint, "-")
 }
 
-func getWindowUpdateFingerprint(frames []ParsedFrame) string {
+func parseWindowUpdateFrames(frames []ParsedFrame) string {
 	for _, parsedFrame := range frames {
 		if parsedFrame.Type == "WINDOW_UPDATE" {
 			return fmt.Sprintf("%d", parsedFrame.Increment)
@@ -60,7 +61,7 @@ func getWindowUpdateFingerprint(frames []ParsedFrame) string {
 	return "00"
 }
 
-func getPriorityFingerprint(frames []ParsedFrame) string {
+func parsePriorityFrames(frames []ParsedFrame) string {
 	var priorityFingerprint string
 
 	for _, parsedFrame := range frames {
@@ -78,18 +79,18 @@ func getPriorityFingerprint(frames []ParsedFrame) string {
 	return "0"
 }
 
-func getHeaderOrderFingerprint(parsedFrames []ParsedFrame) string {
+func parseHeaderOrderFrames(frames []ParsedFrame) string {
 	var headerOrderFingerprint string
 
-	for _, parsedFrame := range parsedFrames {
+	for _, parsedFrame := range frames {
 		if parsedFrame.Type == "HEADERS" {
 			for headerIndex, header := range parsedFrame.Headers {
 				if strings.HasPrefix(header, ":") {
-					headerOrderFingerprint += string(header[1])
-
-					if headerIndex < 3 {
+					if headerIndex != 0 {
 						headerOrderFingerprint += "-"
 					}
+
+					headerOrderFingerprint += strconv.Itoa(int(header[1]))
 				}
 			}
 
@@ -100,13 +101,14 @@ func getHeaderOrderFingerprint(parsedFrames []ParsedFrame) string {
 	return headerOrderFingerprint
 }
 
-func Fingerprint(parsedFrames []ParsedFrame) string {
-	var fingerprint string
+func Fingerprint(frames []ParsedFrame) string {
+	settingsFingerprint := parseSettingsFrames(frames)
 
-	fingerprint += getSettingsFingerprint(parsedFrames) + ","
-	fingerprint += getWindowUpdateFingerprint(parsedFrames) + ","
-	fingerprint += getPriorityFingerprint(parsedFrames) + ","
-	fingerprint += getHeaderOrderFingerprint(parsedFrames)
+	windowUpdateFingerprint := parseWindowUpdateFrames(frames)
 
-	return fingerprint
+	priorityFingerprint := parsePriorityFrames(frames)
+
+	headerOrderFingerprint := parseHeaderOrderFrames(frames)
+
+	return fmt.Sprintf("%s,%s,%s,%s", settingsFingerprint, windowUpdateFingerprint, priorityFingerprint, headerOrderFingerprint)
 }

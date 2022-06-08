@@ -6,12 +6,12 @@ import (
 
 type ProtocolVersion uint16
 
-func (v ProtocolVersion) Hi() uint8 {
-	return uint8(v >> 8)
+func (protocolVersion ProtocolVersion) Hi() uint8 {
+	return uint8(protocolVersion >> 8)
 }
 
-func (v ProtocolVersion) Lo() uint8 {
-	return uint8(v)
+func (protocolVersion ProtocolVersion) Lo() uint8 {
+	return uint8(protocolVersion)
 }
 
 type CompressionMethod uint8
@@ -25,12 +25,6 @@ type ClientHello struct {
 	CipherSuites       []CipherSuite       `json:"cipherSuites"`
 	CompressionMethods []CompressionMethod `json:"compressionMethods"`
 	Extensions         []Extension         `json:"extensions"`
-
-	Extra struct {
-		ServerName   *string  `json:"serverName"`
-		ProvidedSCTs bool     `json:"providedSCTs"`
-		Protocols    []string `json:"protocols"`
-	} `json:"extra"`
 }
 
 func UnmarshalClientHello(handshake []byte) *ClientHello {
@@ -39,6 +33,7 @@ func UnmarshalClientHello(handshake []byte) *ClientHello {
 	handshakeMessage := cryptobyte.String(handshake)
 
 	var handshakeMessageType uint8
+
 	if !handshakeMessage.ReadUint8(&handshakeMessageType) || handshakeMessageType != 1 {
 		return nil
 	}
@@ -86,6 +81,7 @@ func UnmarshalClientHello(handshake []byte) *ClientHello {
 	}
 
 	clientHello.CompressionMethods = []CompressionMethod{}
+
 	for !compressionMethods.Empty() {
 		var compressionMethod uint8
 
@@ -103,6 +99,7 @@ func UnmarshalClientHello(handshake []byte) *ClientHello {
 	}
 
 	var extensions cryptobyte.String
+
 	if !rawClientHello.ReadUint16LengthPrefixed(&extensions) {
 		return nil
 	}
@@ -115,7 +112,7 @@ func UnmarshalClientHello(handshake []byte) *ClientHello {
 			return nil
 		}
 
-		parseExtensionData := extensionParsers[extensionType]
+		parseExtensionData := extensionParserMapping[extensionType]
 		if parseExtensionData == nil {
 			parseExtensionData = ParseUnknownExtensionData
 		}
@@ -129,18 +126,6 @@ func UnmarshalClientHello(handshake []byte) *ClientHello {
 			Private: Extensions[extensionType].Private,
 			Data:    parsedExtensionData,
 		})
-
-		switch extensionType {
-		case 0:
-			clientHello.Extra.ServerName = &parsedExtensionData.(*ServerNameData).HostName
-
-		case 16:
-			clientHello.Extra.Protocols = parsedExtensionData.(*ALPNData).Protocols
-
-		case 18:
-			clientHello.Extra.ProvidedSCTs = true
-		}
-
 	}
 
 	if !rawClientHello.Empty() {

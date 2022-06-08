@@ -19,9 +19,7 @@ type UnknownExtensionData struct {
 }
 
 func ParseUnknownExtensionData(data []byte) ExtensionData {
-	return &UnknownExtensionData{
-		Raw: data,
-	}
+	return &UnknownExtensionData{Raw: data}
 }
 
 type EmptyExtensionData struct {
@@ -44,45 +42,46 @@ type ServerNameData struct {
 }
 
 func ParseServerNameData(raw []byte) ExtensionData {
-	SNIData := &ServerNameData{Raw: raw}
+	sniData := &ServerNameData{Raw: raw}
+
 	extensionData := cryptobyte.String(raw)
 
 	var nameList cryptobyte.String
 
 	if !extensionData.ReadUint16LengthPrefixed(&nameList) || nameList.Empty() {
-		return SNIData
+		return sniData
 	}
 
 	for !nameList.Empty() {
 		var nameType uint8
 
 		if !nameList.ReadUint8(&nameType) {
-			return SNIData
+			return sniData
 		}
 
 		var nameData cryptobyte.String
 
 		if !nameList.ReadUint16LengthPrefixed(&nameData) || nameData.Empty() {
-			return SNIData
+			return sniData
 		}
 
 		switch nameType {
 		case 0:
-			if SNIData.HostName != "" {
-				return SNIData
+			if sniData.HostName != "" {
+				return sniData
 			}
 
-			SNIData.HostName = string(nameData)
+			sniData.HostName = string(nameData)
 		}
 	}
 
 	if !extensionData.Empty() {
-		return SNIData
+		return sniData
 	}
 
-	SNIData.Valid = true
+	sniData.Valid = true
 
-	return SNIData
+	return sniData
 }
 
 type ALPNData struct {
@@ -93,6 +92,7 @@ type ALPNData struct {
 
 func ParseALPNData(raw []byte) ExtensionData {
 	ALPNData := &ALPNData{Raw: raw, Protocols: []string{}}
+
 	extensionData := cryptobyte.String(raw)
 
 	var protocolNameList cryptobyte.String
@@ -193,7 +193,7 @@ func ParseECPointFormatsData(rawData []byte) ExtensionData {
 	return parsedPointFormatsData
 }
 
-var extensionParsers = map[uint16]func([]byte) ExtensionData{
+var extensionParserMapping = map[uint16]func([]byte) ExtensionData{
 	0:  ParseServerNameData,
 	10: ParseSupportedGroupsData,
 	11: ParseECPointFormatsData,
