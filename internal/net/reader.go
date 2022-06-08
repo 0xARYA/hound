@@ -32,11 +32,11 @@ func (reader *HandshakeReader) Read(p []byte) (int, error) {
 		p = p[:reader.bytesRemaining]
 	}
 
-	bytesRead, readError := reader.reader.Read(p)
+	bytesReadLength, readError := reader.reader.Read(p)
 
-	reader.bytesRemaining -= bytesRead
+	reader.bytesRemaining -= bytesReadLength
 
-	return bytesRead, readError
+	return bytesReadLength, readError
 }
 
 func (reader *HandshakeReader) ReadMessage() ([]byte, error) {

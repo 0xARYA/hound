@@ -6,20 +6,55 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 
-	houndHTTP2 "github.com/0xARYA/hound/pkg/fingerprinters/http2"
+	houndTLSH "github.com/0xARYA/hound/internal/TLSH"
+
+	houndHTTP2 "github.com/0xARYA/hound/pkg/http2"
+	houndTLS "github.com/0xARYA/hound/pkg/tls"
 )
 
-type HTTP2FingerprintResponse struct {
-	TLSFingerprint   string `json:"TLS"`
-	HTTP2Fingerprint string `json:"HTTP2"`
-	IP               string `json:"IP"`
+func getFingerprintSum(fingerprint string) int {
+	fingerprintSum := 0
+
+	sections := strings.Split(fingerprint, ",")
+
+	for _, section := range sections {
+		values := strings.Split(section, "-")
+
+		for _, value := range values {
+			if strings.Contains(value, ":") {
+				children := strings.Split(value, ":")
+
+				header, _ := strconv.Atoi(children[0])
+				value, _ := strconv.Atoi(children[1])
+
+				fingerprintSum += header * value
+			}
+
+			value, _ := strconv.Atoi(value)
+
+			fingerprintSum += value
+
+			continue
+		}
+	}
+
+	return fingerprintSum
 }
+
+type HTTP2FingerprintResponse struct {
+	Hash string `json:"hash"`
+	Sum  int    `json:"sum"`
+	IP   string `json:"IP"`
+}
+
+var fingerprintRegEx = regexp.MustCompile("[^A-Za-z0-9]*")
 
 func parseHTTP2(framer *http2.Framer, frameParseChannel chan houndHTTP2.ParsedFrame) {
 	for {
@@ -98,7 +133,7 @@ func parseHTTP2(framer *http2.Framer, frameParseChannel chan houndHTTP2.ParsedFr
 	}
 }
 
-func handleHTTP2(connection net.Conn, TLSFingerprint string) {
+func handleHTTP2(connection net.Conn, tlsFingerprint *houndTLS.TLSFingerprint) {
 	framer := http2.NewFramer(connection, connection)
 
 	framer.WriteSettings(
@@ -126,10 +161,18 @@ func handleHTTP2(connection net.Conn, TLSFingerprint string) {
 
 	HTTP2Fingerprint := houndHTTP2.Fingerprint(parsedFrames)
 
+	fingerprint := fmt.Sprintf("%s,%s,%s", HTTP2Fingerprint, tlsFingerprint.Client, tlsFingerprint.Server)
+
+	fingerprintSum := getFingerprintSum(fingerprint)
+
+	normalizedFingerprint := fingerprintRegEx.ReplaceAllString(fingerprint, "")
+
+	fingerprintHash, _ := houndTLSH.HashBytes([]byte(normalizedFingerprint))
+
 	responseBody, _ := json.Marshal(HTTP2FingerprintResponse{
-		TLSFingerprint:   TLSFingerprint,
-		HTTP2Fingerprint: HTTP2Fingerprint,
-		IP:               connection.RemoteAddr().String(),
+		Hash: fingerprintHash.String(),
+		Sum:  fingerprintSum,
+		IP:   connection.RemoteAddr().String(),
 	})
 
 	responseContentLength := strconv.Itoa(len(responseBody))

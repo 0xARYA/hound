@@ -23,7 +23,7 @@ func main() {
 		log.Fatal("No Certificate Path Specified.")
 	}
 
-	TLSConfiguration := tls.Config{
+	tlsConfiguration := tls.Config{
 		NextProtos:             []string{"h2", "http/1.1", acme.ALPNProto},
 		SessionTicketsDisabled: true,
 		GetCertificate:         cert.GetCertificateFromFile(*certificatePath),
@@ -37,17 +37,17 @@ func main() {
 
 	handshakeListener := houndNet.NewHandshakeListener(streamListener)
 
-	TLSListener := tls.NewListener(handshakeListener, &TLSConfiguration)
+	tlsListener := tls.NewListener(handshakeListener, &tlsConfiguration)
 
-	defer TLSListener.Close()
+	defer tlsListener.Close()
 
-	log.Println("Server Running On: ", TLSListener.Addr().String())
+	log.Println("Server Running On: ", tlsListener.Addr().String())
 
 	for {
-		connection, connectionError := TLSListener.Accept()
+		connection, connectionAcceptError := tlsListener.Accept()
 
-		if connectionError != nil {
-			log.Println("Failed To Accept Connection: ", connectionError)
+		if connectionAcceptError != nil {
+			log.Println("Failed To Accept Connection: ", connectionAcceptError)
 
 			continue
 		}
